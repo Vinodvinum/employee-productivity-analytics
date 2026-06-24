@@ -1,0 +1,198 @@
+// ============================================================
+// 02_dax_measures.dax
+// All DAX Measures for Employee Productivity Dashboard
+// Copy each measure into Power BI Desktop:
+//   Modeling → New Measure → Paste formula → Enter
+// ============================================================
+
+
+// ── BASIC KPIs ───────────────────────────────────────────────
+
+Total Employees =
+DISTINCTCOUNT(Employee_Productivity[Employee_ID])
+
+Total Records =
+COUNTROWS(Employee_Productivity)
+
+Total Tasks Completed =
+SUM(Employee_Productivity[Tasks_Completed])
+
+Total Hours Worked =
+SUM(Employee_Productivity[Hours_Worked])
+
+
+// ── PRODUCTIVITY ─────────────────────────────────────────────
+
+Avg Productivity % =
+ROUND(
+    AVERAGEX(
+        Employee_Productivity,
+        DIVIDE(Employee_Productivity[Tasks_Completed],
+               Employee_Productivity[Target_Tasks]) * 100
+    ), 2
+)
+
+Productivity vs Target =
+[Avg Productivity %] - 100
+
+Productivity Target = 100
+
+
+// ── QUALITY ──────────────────────────────────────────────────
+
+Avg Quality % =
+ROUND(AVERAGE(Employee_Productivity[Quality_Score]), 2)
+
+Quality vs Target =
+[Avg Quality %] - 95
+
+Quality Target = 95
+
+High Quality Records =
+CALCULATE(
+    COUNTROWS(Employee_Productivity),
+    Employee_Productivity[Quality_Score] >= 95
+)
+
+Low Quality Records =
+CALCULATE(
+    COUNTROWS(Employee_Productivity),
+    Employee_Productivity[Quality_Score] < 90
+)
+
+Max Quality % =
+MAX(Employee_Productivity[Quality_Score])
+
+Min Quality % =
+MIN(Employee_Productivity[Quality_Score])
+
+
+// ── EFFICIENCY ───────────────────────────────────────────────
+
+Avg Efficiency =
+ROUND(
+    AVERAGEX(
+        Employee_Productivity,
+        DIVIDE(Employee_Productivity[Tasks_Completed],
+               Employee_Productivity[Hours_Worked])
+    ), 2
+)
+
+
+// ── TOP / BOTTOM PERFORMER ───────────────────────────────────
+
+Top Performer Name =
+CALCULATE(
+    FIRSTNONBLANK(Employee_Productivity[Employee_Name], 1),
+    TOPN(1,
+         SUMMARIZE(Employee_Productivity,
+                   Employee_Productivity[Employee_Name],
+                   "__prod", [Avg Productivity %]),
+         [__prod], DESC)
+)
+
+Top Performer % =
+CALCULATE(
+    [Avg Productivity %],
+    TOPN(1,
+         SUMMARIZE(Employee_Productivity,
+                   Employee_Productivity[Employee_Name],
+                   "__prod", [Avg Productivity %]),
+         [__prod], DESC)
+)
+
+Lowest Performer Name =
+CALCULATE(
+    FIRSTNONBLANK(Employee_Productivity[Employee_Name], 1),
+    TOPN(1,
+         SUMMARIZE(Employee_Productivity,
+                   Employee_Productivity[Employee_Name],
+                   "__prod", [Avg Productivity %]),
+         [__prod], ASC)
+)
+
+Lowest Performer % =
+CALCULATE(
+    [Avg Productivity %],
+    TOPN(1,
+         SUMMARIZE(Employee_Productivity,
+                   Employee_Productivity[Employee_Name],
+                   "__prod", [Avg Productivity %]),
+         [__prod], ASC)
+)
+
+
+// ── DEPARTMENT RANKINGS ──────────────────────────────────────
+
+Best Dept Productivity =
+CALCULATE(
+    [Avg Productivity %],
+    TOPN(1,
+         SUMMARIZE(Employee_Productivity,
+                   Employee_Productivity[Department],
+                   "__prod", [Avg Productivity %]),
+         [__prod], DESC)
+)
+
+Dept Productivity Rank =
+RANKX(
+    ALL(Employee_Productivity[Department]),
+    [Avg Productivity %],
+    , DESC
+)
+
+
+// ── MONTH-OVER-MONTH CHANGE ──────────────────────────────────
+
+Prev Month Productivity =
+CALCULATE(
+    [Avg Productivity %],
+    DATEADD(Employee_Productivity[Date], -1, MONTH)
+)
+
+MoM Productivity Change =
+[Avg Productivity %] - [Prev Month Productivity]
+
+Prev Month Quality =
+CALCULATE(
+    [Avg Quality %],
+    DATEADD(Employee_Productivity[Date], -1, MONTH)
+)
+
+MoM Quality Change =
+[Avg Quality %] - [Prev Month Quality]
+
+
+// ── TARGET HIT RATE ──────────────────────────────────────────
+
+Records Above Target =
+CALCULATE(
+    COUNTROWS(Employee_Productivity),
+    DIVIDE(Employee_Productivity[Tasks_Completed],
+           Employee_Productivity[Target_Tasks]) >= 1
+)
+
+Target Hit Rate % =
+ROUND(
+    DIVIDE([Records Above Target], [Total Records]) * 100,
+    1
+)
+
+
+// ── CONDITIONAL FORMATTING MEASURES ─────────────────────────
+
+Productivity Color =
+SWITCH(
+    TRUE(),
+    [Avg Productivity %] >= 100, "#16A34A",  -- Green
+    [Avg Productivity %] >= 95,  "#F59E0B",  -- Amber
+    "#DC2626"                                 -- Red
+)
+
+Quality Color =
+SWITCH(
+    TRUE(),
+    [Avg Quality %] >= 95, "#16A34A",
+    [Avg Quality %] >= 90, "#F59E0B",
+    "#DC2626"
+)
